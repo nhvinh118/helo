@@ -5,5 +5,11 @@
             "name": "feature/NewFeature1",
             "base": "develop"
         }
+    ],
+    "gitflow4code.releases": [
+        {
+            "name": "release/NewFeatureRelease",
+            "base": "develop"
+        }
     ]
 }
