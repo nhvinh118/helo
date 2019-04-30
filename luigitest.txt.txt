@@ -1,0 +1,176 @@
+
+POST REPLY	
+
+
+My groups
+Home
+Starred
+Favorites
+Click on a group’s star icon to add it to your favorites
+Recently viewed
+Privacy - Terms of Service
+Luigi ›
+Unit testing Luigi Tasks
+8 posts by 6 authors 
+
+ste...@fly.vc	
+10/27/16
+Hi,
+first of all thanks for your work on Luigi! Looks like a very useful framework.
+
+I'm wondering what is the best way to unit test Tasks. Given the design choice to embed dependencies in the code of each Task, I assume constructor based dependency injection is not an option. I found the luigi.mock module, and Erik's post from 3 years ago [1] about patching output() and requires() using mock.patch.
+
+Is this still the recommended approach? And can anyone point me to a real life example to help me wrap my head around how the different pieces work together?
+
+Sorry if I'm asking an obvious question. Couldn't find much information on this in the docs or list archives.
+
+Thanks,
+Stephan
+
+[1] https://groups.google.com/forum/#!msg/luigi-user/lYjunyRX4rY/GdbUVJGvkksJ
+
+Click here to Reply
+
+Lars Albertsson	
+10/28/16
+Other recipients: ste...@fly.vc
+It depends on how you use Luigi. 
+
+Most people use it primarily for workflow orchestration of external 
+batch processing tasks. If that is the case, since Luigi is acting 
+integration clue, and you are unlikely to get return of investment of 
+your time with mocking and unit testing, since you will be testing 
+something that differs from your production environment. 
+
+Are you embedding business logic computations in your Luigi Task's run 
+methods? In that case, I suggest that you build a simple test harness, 
+e.g. with Python unittest, which generates test input files on disk, 
+calls your Task(s), and verifies the content of output files. 
+
+You may need to add path prefix parameters to your Tasks in order to 
+make the flexible with respect to file locations. 
+
+This strategy also works for testing pipelines of jobs that run 
+external batch processing tasks. 
+
+Are you using Luigi for Python MapReduce? It is outdated, so in that 
+case I suggest you move to another batch computation framework, e.g. 
+Spark. 
+
+I have held a couple of presentations that include advice for testing 
+batch processing pipelines, see links below. Video for the latter will 
+be published shortly. Follow me on social media for announcement. 
+
+http://www.slideshare.net/lallea/data-pipelines-from-zero-to-solid 
+http://www.slideshare.net/lallea/test-strategies-for-data-processing-pipelines-67244458 
+
+Regards, 
+
+
+
+Lars Albertsson 
+Data engineering consultant 
+www.mapflat.com 
+https://twitter.com/lalleal 
++46 70 7687109 
+Calendar: https://goo.gl/6FBtlS 
+- show quoted text -
+> -- 
+> You received this message because you are subscribed to the Google Groups "Luigi" group. 
+> To unsubscribe from this group and stop receiving emails from it, send an email to luigi...@googlegroups.com. 
+> For more options, visit https://groups.google.com/d/optout. 
+ 
+
+Stephan Seyboth	
+10/29/16
+Other recipients: la...@mapflat.com
+Hi Lars,
+
+thanks for sharing, very helpful! I think you finally helped me resolve the knot in my head :)
+
+We *are* embedding business logic in our Luigi Tasks' run methods. Once you more cleanly separate concerns, testing becomes much more simple indeed. I.e. split out the actual business logic into a separate method, while keeping all the dependency management, i/o location handling, and other setup in run().
+
+The method containing the business logic then just gets file descriptors passed in for i/o. Or in our case where the pipeline is super simple and we serialize via json.dump(), you could even move that part to run(). Then the business logic method becomes a simple function without any side effects. In either case this is trivial to test with unittest or any other standard test framework.
+
+E.g. you get something like this:
+
+class MyTask(luigi.Task):
+...
+    def run(self):
+        ...
+        input = json.load(input_target)
+        output = do_actual_work(input)
+        json.dump(output, output_target)
+
+    def do_actual_work(self, input):
+        # business logic goes here
+        ...
+
+Looks obvious once you see it. Given that questions around testing have come up on this list before, I'm wondering if it would be worth adding an example to the Luigi docs?
+
+Thanks,
+Stephan
+
+- show quoted text -
+ 
+
+Lars Albertsson	
+10/30/16
+Other recipients: ste...@fly.vc
+I am glad that you found a solution that you are happy with. It sounds 
+like a classic separation of concerns aka refactor for testability. 
+:-) It probably improves readability of the code as a side effect. 
+
+I suppose that there are others that would benefit from documentation 
+around testing. I encourage you to submit a documentation PR based on 
+what you learnt. ;-) 
+
+Regards, 
+
+
+Lars Albertsson 
+Data engineering consultant 
+www.mapflat.com 
+https://twitter.com/lalleal 
++46 70 7687109 
+Calendar: https://goo.gl/6FBtlS 
+
+
+- show quoted text -
+ 
+
+Arash Rouhani Kalleh	
+10/30/16
+Other recipients: la...@mapflat.com, ste...@fly.vc
+Yea, I really would appreciate this discussion being added as a new section in the docs about luigi and testing practices. Lars's first email should be an excellent place to start.
+- show quoted text -
+ 
+
+nat...@getthematic.com	
+10/31/16
+Other recipients: la...@mapflat.com, ste...@fly.vc
+Another good approach is to use MockTargets from luigi.mock
+We extend the task under test and can then check the output without the need for path parameters. A simple example:
+
+class TestCombine(CombineCSVFiles):
+    def requires(self):
+        return [TestResourceTask(filename="csv_combine_1.csv"),TestResourceTask("csv_combine_2.csv")]
+
+    def output(self):
+        return MockTarget("output")
+
+TestResourceTask is just a helper task for reading test resources off disk.
+
+ 
+
+hect....@gmail.com	
+8/16/17
+Other recipients: la...@mapflat.com, ste...@fly.vc, nat...@getthematic.com
+- show quoted text -
+Can you show where this code comes from? I am trying to do Unit testing in Luigi for different tasks (each one has different inputs and outputs) and I need to import mock tragets from requires but I see no information about TestResourceTask
+ 
+
+Dan Davis	
+1/9/18
+I've been struggling with this somewhat as well.   What I've done is to parameterize the tasks in such a way that they can be tested using pytest.
+This can be done using Mixins - maybe you test the mixins and not the actual tasks.
