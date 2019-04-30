@@ -1,0 +1,54 @@
+pytest-cov cover many applications at once
+Ask Question
+
+1
+
+
+I built django project with many applications. Now I want to generate a coverage report for these applications. For testing purposes, I use py.test, pytest-django and pytest-cov. So far, I can generate the report only by typing all my app names manually on the command line:
+
+py.test --cov-report html --cov=app1 --cov=app2 --cov=app3 --cov=app4 */tests.py
+Does pytest-cov have a way to specify all the applications with a simple expression?
+
+django pytest coverage.py pytest-django
+shareedit
+edited Apr 21 '16 at 21:54
+
+Prune
+46.4k143759
+asked Apr 21 '16 at 21:39
+
+Illarion Khlestov
+686
+add a comment
+2 Answers
+active oldest votes
+
+1
+
+Assuming you're using bash, you could use it to expand the parameters:
+
+py.test --cov-report html --cov=app{1,2,3,4} */tests.py
+You could also add those parameters to pytest.ini so they're passed automatically on each invocation.
+
+shareedit
+answered Apr 23 '16 at 16:46
+
+The Compiler
+4,93121838
+Yes, this approach solve my problem. Really I thought that in pytest-cov exist argument something like --cov=* or --cov=all for all installed apps, but really your solution is enough for me. – Illarion Khlestov Apr 24 '16 at 14:32 
+add a comment
+
+0
+
+@the-compiler 's answer did not work for me. If you want to test all apps, here is a way to do it:
+
+pytest --cov-report html --cov=. */tests.py
+source: https://medium.com/@harshvb7/using-pytest-to-write-tests-in-django-6783674c55b8
+
+shareedit
+answered Oct 16 '18 at 8:57
+
+cgl
+4191618
+This one includes .venv directory – freezed Mar 14 at 10:21
+@freezed you can specify which folders to avoid in your setup.cfg ex: norecursedirs = build docs/_build *.egg .tox *.venv *migrations* .*migrations* */migrations/* – cgl Mar 15 at 11:53
